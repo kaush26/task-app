@@ -21,7 +21,7 @@ type TaskViewTypes = {
 };
 
 export default function TaskView({ className, task, onClose }: TaskViewTypes) {
-  const { lists } = React.useContext(ListsContext);
+  const { lists, setLists } = React.useContext(ListsContext);
   const { tasks, setTasks } = React.useContext<TaskContextType>(TasksContext);
   const [dueDate, setDueDate] = React.useState<Date | undefined>(new Date());
   const [selectedList, setSelectedList] = React.useState<ItemType | null>({
@@ -38,7 +38,7 @@ export default function TaskView({ className, task, onClose }: TaskViewTypes) {
     enableReinitialize: true,
     // validationSchema: {},
     onSubmit: (values, { setSubmitting }) => {
-      setSubmitting(true);
+      setSubmitting(false);
       // console.log(values);
     },
   });
@@ -46,20 +46,31 @@ export default function TaskView({ className, task, onClose }: TaskViewTypes) {
   async function handleSubmit() {
     const payload = { ...formik.values, dueDate, list: selectedList?.value };
     console.log(payload);
-    if (task._id) {
+    if (payload._id) {
       // api update
       const res = await new API().call({ cmd: "updateTask", payload });
-      setTasks(
-        tasks.map((d) => {
-          if (d._id === task._id)
-            return {
-              ...d,
-              ...formik.values,
-              dueDate: dueDate ?? new Date(),
-              list: lists.find((list) => list._id === selectedList?.value),
-              updatedTime: new Date(),
-            };
-          return d;
+      const updatedListTasks: TaskType[] = [];
+      const updatedTasks = tasks.map((d) => {
+        if (d._id === task._id) {
+          const updatedListTask = {
+            ...d,
+            ...formik.values,
+            dueDate: dueDate ?? new Date(),
+            list: lists.find((list) => list._id === selectedList?.value),
+            updatedTime: new Date(),
+          };
+          updatedListTasks.push(updatedListTask);
+          return updatedListTask;
+        }
+
+        return d;
+      });
+      setTasks(updatedTasks);
+
+      setLists(
+        lists.map((list) => {
+          if (list._id === payload.list) return { ...list, tasks: updatedListTasks };
+          return list;
         })
       );
     } else {
@@ -68,7 +79,15 @@ export default function TaskView({ className, task, onClose }: TaskViewTypes) {
 
       const task = await new API().call({ cmd: "addTask", payload });
       delete task.__v;
-      setTasks([...tasks, { ...task, list: lists.find((list) => list._id === task.list) }]);
+      const newTask = { ...task, list: lists.find((list) => list._id === task.list) };
+      const newTasks = [...tasks, newTask];
+      setTasks(newTasks);
+      setLists(
+        lists.map((list) => {
+          if (list._id === payload.list) return { ...list, tasks: [...list.tasks, newTask] };
+          return list;
+        })
+      );
     }
     onClose?.();
   }
@@ -77,6 +96,12 @@ export default function TaskView({ className, task, onClose }: TaskViewTypes) {
     const res = await new API().call({ cmd: "deleteTask", payload: { _id: task._id } });
     if (!res?.deletedCount) return;
     setTasks(tasks.filter((d) => d._id !== task._id));
+    setLists(
+      lists.map((list) => {
+        if (list._id === task.list?._id) return { ...list, tasks: list.tasks.filter((t) => t._id !== task._id) };
+        return list;
+      })
+    );
     onClose?.();
   }
 
