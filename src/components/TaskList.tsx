@@ -1,4 +1,4 @@
-import { LuCalendar, LuCheckCircle2, LuClock2, LuHistory, LuUser2 } from "react-icons/lu";
+import { LuCalendar, LuCheckCircle2, LuClock2, LuHistory } from "react-icons/lu";
 import ListItem from "./ListItem";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import ColorBox from "./ColorBox";
@@ -65,10 +65,6 @@ export default function TaskList({
                     label={task.list?.label || "Empty"}
                   />
                 </ListGroup>
-
-                {/* <ListGroup label="ASSIGNED BY" className="text-[10px] gap-[1px]" labelClassName="ml-2">
-                  <ListItem className="hover:bg-transparent cursor-default" Icon={<LuUser2 />} label={task.createdBy} />
-                </ListGroup> */}
 
                 <ListGroup label="STATUS" className="text-[10px] gap-[1px]" labelClassName="ml-2">
                   <ListItem

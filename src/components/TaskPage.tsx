@@ -4,6 +4,8 @@ import TaskView from "./TaskView";
 import Page from "./Page";
 import AddButton from "./AddButton";
 import API from "@/api/api";
+import { toast } from "./ui/use-toast";
+import { ListType } from "./Lists";
 
 const emptyTask = {
   _id: "",
@@ -19,12 +21,17 @@ type TaskPagePropTypes = {
   tasks: TaskType[];
   label: React.ReactNode;
   count: number;
+  selectedDefaultList?: ListType;
   setTasks?: (tasks: TaskType[]) => void;
 };
 
-export default function TaskPage({ tasks, label, count, setTasks }: TaskPagePropTypes) {
+export default function TaskPage({ tasks, label, count, selectedDefaultList, setTasks }: TaskPagePropTypes) {
   const [task, setTask] = React.useState<TaskType>(emptyTask);
   const [openTaskView, setOpenTaskView] = React.useState(false);
+
+  React.useEffect(() => {
+    setOpenTaskView(false);
+  }, [selectedDefaultList]);
 
   function handleSelectTask(task: TaskType) {
     setTask(task);
@@ -38,8 +45,9 @@ export default function TaskPage({ tasks, label, count, setTasks }: TaskPageProp
     tasks_[taskIndex] = { ...tasks_[taskIndex], status };
 
     // api call
-    const res = await new API().call({ cmd: "updateTask", payload: { _id: taskId, status } });
-    // console.log(tasks_);
+    const { statusCode, error } = await new API().call({ cmd: "updateTask", payload: { _id: taskId, status } });
+    if (statusCode === 500) return toast({ title: error.message, variant: "destructive" });
+
     setTasks?.(tasks_);
   }
 
@@ -48,7 +56,7 @@ export default function TaskPage({ tasks, label, count, setTasks }: TaskPageProp
       label={label}
       count={count}
       openView={openTaskView}
-      View={<TaskView task={task} onClose={() => setOpenTaskView(false)} />}
+      View={<TaskView task={task} selectedDefaultList={selectedDefaultList} onClose={() => setOpenTaskView(false)} />}
     >
       <AddButton
         onClick={() => {

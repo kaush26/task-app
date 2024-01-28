@@ -13,68 +13,65 @@ import View from "./View";
 import ListsContext from "@/context/list";
 import TasksContext, { TaskContextType } from "@/context/task";
 import API from "@/api/api";
+import { toast, useToast } from "./ui/use-toast";
+import Alert from "./Alert";
+import * as Yup from "yup";
+import { ListType } from "./Lists";
 
 type TaskViewTypes = {
   task: TaskType;
   className?: string;
+  selectedDefaultList?: ListType;
   onClose?: () => void;
 };
 
-export default function TaskView({ className, task, onClose }: TaskViewTypes) {
+const validationSchema = Yup.object().shape({
+  title: Yup.string().required(),
+  description: Yup.string().required(),
+});
+
+export default function TaskView({ className, task, selectedDefaultList, onClose }: TaskViewTypes) {
   const { lists, setLists } = React.useContext(ListsContext);
   const { tasks, setTasks } = React.useContext<TaskContextType>(TasksContext);
   const [dueDate, setDueDate] = React.useState<Date | undefined>(new Date());
   const [selectedList, setSelectedList] = React.useState<ItemType | null>({
     label: (
       <div className="flex items-center gap-4">
-        <ColorBox color={lists[0]?.ragColor} /> {lists[0]?.label}
+        <ColorBox color={selectedDefaultList?.ragColor ?? lists[0]?.ragColor} />{" "}
+        {selectedDefaultList?.label ?? lists[0]?.label}
       </div>
     ),
-    value: lists[0]?._id,
+    value: selectedDefaultList?._id ?? lists[0]?._id,
   });
+
+  const toaster = useToast();
 
   const formik = useFormik({
     initialValues: task,
     enableReinitialize: true,
-    // validationSchema: {},
-    onSubmit: (values, { setSubmitting }) => {
+    validationSchema,
+    onSubmit: (_values, { setSubmitting, validateForm }) => {
       setSubmitting(false);
-      // console.log(values);
+      validateForm();
+      handleSubmit();
     },
   });
 
   async function handleSubmit() {
+    if (!formik.isValid) return;
     const payload = { ...formik.values, dueDate, list: selectedList?.value };
-    console.log(payload);
+
     if (payload._id) {
-      // api update
-      const res = await new API().call({ cmd: "updateTask", payload });
-      const updatedListTasks: TaskType[] = [];
-      const updatedTasks = tasks.map((d) => {
-        if (d._id === task._id) {
-          const updatedListTask = {
-            ...d,
-            ...formik.values,
-            dueDate: dueDate ?? new Date(),
-            list: lists.find((list) => list._id === selectedList?.value),
-            updatedTime: new Date(),
-          };
-          updatedListTasks.push(updatedListTask);
-          return updatedListTask;
-        }
+      const { statusCode, error } = await new API().call({ cmd: "updateTask", payload });
+      if (statusCode === 500) return toast({ title: error.message, variant: "destructive" });
 
-        return d;
-      });
+      const [updatedTasks, updatedLists] = await Promise.all([
+        new API().call({ cmd: "getTasks" }),
+        new API().call({ cmd: "getLists" }),
+      ]);
       setTasks(updatedTasks);
-
-      setLists(
-        lists.map((list) => {
-          if (list._id === payload.list) return { ...list, tasks: updatedListTasks };
-          return list;
-        })
-      );
+      setLists(updatedLists);
     } else {
-      // api add
       delete payload._id;
 
       const task = await new API().call({ cmd: "addTask", payload });
@@ -102,6 +99,8 @@ export default function TaskView({ className, task, onClose }: TaskViewTypes) {
         return list;
       })
     );
+
+    toaster.toast({ title: "Task Deleted Successfully", variant: "destructive" });
     onClose?.();
   }
 
@@ -139,13 +138,20 @@ export default function TaskView({ className, task, onClose }: TaskViewTypes) {
             </Section>
           </div>
           <div className="flex items-center gap-4 w-full">
-            <Button type="submit" className="w-full p-6" onClick={handleSubmit}>
+            <Button type="submit" className="w-full p-6">
               Save
             </Button>
             {task._id && (
-              <Button variant={"destructive"} className="p-6" onClick={handleDelete}>
-                <LuTrash2 />
-              </Button>
+              <Alert
+                title="Are you sure want to delete this task?"
+                description="This task cannot be undone. This will permanently delete your
+              account and remove your task from our servers."
+                onContinue={handleDelete}
+              >
+                <Button variant={"destructive"} className="p-6">
+                  <LuTrash2 />
+                </Button>
+              </Alert>
             )}
           </div>
         </form>
@@ -159,15 +165,24 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
 }
 
 function InputText(props: { type: string; name: string; className?: string; placeholder?: string }) {
-  const [fields, meta, helpers] = useField(props.name);
+  const [fields, meta] = useField(props.name);
 
-  // console.log(fields, meta, helpers);
   switch (props.type) {
     case "text": {
-      return <Input {...fields} {...props} />;
+      return (
+        <div className="flex flex-col">
+          <Input {...fields} {...props} />
+          <div className="text-red-500 h-3 text-[14px] leading-3">{meta.error}</div>
+        </div>
+      );
     }
     case "textarea": {
-      return <Textarea {...fields} {...props} />;
+      return (
+        <div className="flex flex-col">
+          <Textarea {...fields} {...props} />
+          <div className="text-red-500 h-3 text-[14px] leading-3">{meta.error}</div>
+        </div>
+      );
     }
   }
 }

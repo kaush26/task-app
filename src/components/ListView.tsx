@@ -10,12 +10,19 @@ import ColorBox from "./ColorBox";
 import { useContext, useEffect, useState } from "react";
 import API from "@/api/api";
 import ListsContext from "@/context/list";
+import Alert from "./Alert";
+import { toast } from "./ui/use-toast";
+import * as Yup from "yup";
 
 type ListViewPropsType = {
   list: ListType;
   className?: string;
   onClose?: () => void;
 };
+
+const validationSchema = Yup.object().shape({
+  label: Yup.string().required("List title is required"),
+});
 
 export default function ListView({ list, className, onClose }: ListViewPropsType) {
   const { lists, setLists } = useContext(ListsContext);
@@ -26,21 +33,25 @@ export default function ListView({ list, className, onClose }: ListViewPropsType
 
   const formik = useFormik({
     initialValues: list,
-    validationSchema: {},
+    validationSchema,
     enableReinitialize: true,
-    onSubmit: () => {},
+    onSubmit: (_values, { validateForm }) => {
+      validateForm();
+      handleSubmit();
+    },
   });
 
   async function handleSubmit() {
-    console.log(formik);
     if (list._id) {
       const payload = {
         _id: list._id,
         label: formik.values.label,
         ragColor: selectedColor,
       };
-      // api update
-      const res = await new API().call({ cmd: "updateList", payload });
+
+      const { statusCode, error } = await new API().call({ cmd: "updateList", payload });
+      if (statusCode === 500) return toast({ title: error.message, variant: "destructive" });
+
       setLists(
         lists.map((d) => {
           if (d._id === list._id) return { ...d, ...payload, updatedTime: new Date() };
@@ -48,7 +59,6 @@ export default function ListView({ list, className, onClose }: ListViewPropsType
         })
       );
     } else {
-      // api add
       const payload = {
         label: formik.values.label,
         ragColor: selectedColor,
@@ -87,13 +97,20 @@ export default function ListView({ list, className, onClose }: ListViewPropsType
             </div>
           </div>
           <div className="flex items-center gap-4 w-full">
-            <Button type="submit" className="w-full p-6" onClick={handleSubmit}>
+            <Button type="submit" className="w-full p-6">
               Save
             </Button>
             {list._id && (
-              <Button variant={"destructive"} className="p-6" onClick={handleDelete}>
-                <LuTrash2 />
-              </Button>
+              <Alert
+                title="Are you sure want to delete this list?"
+                description="This list cannot be undone. This will permanently delete your
+            account and remove your task from our servers."
+                onContinue={handleDelete}
+              >
+                <Button variant={"destructive"} className="p-6">
+                  <LuTrash2 />
+                </Button>
+              </Alert>
             )}
           </div>
         </form>
@@ -103,15 +120,24 @@ export default function ListView({ list, className, onClose }: ListViewPropsType
 }
 
 function InputText(props: { type: string; name: string; className?: string; placeholder?: string }) {
-  const [fields, meta, helpers] = useField(props.name);
+  const [fields, meta] = useField(props.name);
 
-  console.log(fields, meta, helpers);
   switch (props.type) {
     case "text": {
-      return <Input {...fields} {...props} />;
+      return (
+        <div className="flex flex-col">
+          <Input {...fields} {...props} />
+          <div className="text-red-500 h-3 text-[14px] leading-3">{meta.error}</div>
+        </div>
+      );
     }
     case "textarea": {
-      return <Textarea {...fields} {...props} />;
+      return (
+        <div className="flex flex-col">
+          <Textarea {...fields} {...props} />
+          <div className="text-red-500 h-3 text-[14px] leading-3">{meta.error}</div>
+        </div>
+      );
     }
   }
 }

@@ -10,12 +10,19 @@ import React from "react";
 import ListsContext, { ListContextType } from "@/context/list";
 import TasksContext, { TaskContextType } from "@/context/task";
 import { dateCompare } from "@/lib/utils";
+import AuthContext from "@/context/auth";
 
 export default function Menu() {
+  const { setAuth } = React.useContext(AuthContext);
   const { lists } = React.useContext<ListContextType>(ListsContext);
   const { tasks } = React.useContext<TaskContextType>(TasksContext);
   const [location, navigate] = [useLocation(), useNavigate()];
   const id = location.pathname;
+
+  function handleLogOut() {
+    setAuth({ isAuth: false, token: "" });
+    localStorage.removeItem("token");
+  }
 
   return (
     <Paper className="flex flex-col grow-0 min-w-[20%] h-[calc(100dvh-46px)] p-0 shrink-0 ">
@@ -43,7 +50,7 @@ export default function Menu() {
               count={tasks.filter((task) => dateCompare(task.dueDate, new Date(), (a, b) => a === b)).length}
               showCount
               active={id === "/task/today"}
-              onClick={() => navigate("task/today")}
+              onClick={() => navigate("/task/today")}
             />
           </ListGroup>
           <Separator />
@@ -57,7 +64,7 @@ export default function Menu() {
                 count={list.tasks.length}
                 active={id === `/lists/${list._id}`}
                 showCount
-                onClick={() => navigate(`lists/${list._id}`)}
+                onClick={() => navigate(`/lists/${list._id}`)}
               />
             ))}
             {/* <ListItem Icon={<LuPlus />} label="Add New List" showCount={false} onClick={() => console.log("CLICKED")} /> */}
@@ -68,7 +75,7 @@ export default function Menu() {
         </div>
       </div>
 
-      <Button variant={"ghost"} className="flex shrink-0 h-[60px] w-full p-[26px]">
+      <Button variant={"ghost"} onClick={handleLogOut} className="flex shrink-0 h-[60px] w-full p-[26px]">
         <div className="flex items-center gap-4 w-full">
           <LuLogOut />
           <div className="font-semibold">Sign Out</div>

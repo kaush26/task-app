@@ -29,5 +29,13 @@ export default function Tasks() {
     );
   }
 
-  return <TaskPage tasks={listTasks} label={list?.label} count={list?.tasks.length || 0} setTasks={handleSetTasks} />;
+  return (
+    <TaskPage
+      tasks={listTasks}
+      label={list?.label}
+      count={list?.tasks.length || 0}
+      selectedDefaultList={list!}
+      setTasks={handleSetTasks}
+    />
+  );
 }
