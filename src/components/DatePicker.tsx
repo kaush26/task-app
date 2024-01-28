@@ -15,6 +15,9 @@ type DatePickerTypes = {
 
 export function DatePicker({ className, date, onChange, ...props }: DatePickerTypes & CalendarProps) {
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(date);
+  React.useEffect(() => {
+    setSelectedDate(date);
+  }, [date]);
 
   function handleSelect(value: Date | undefined) {
     setSelectedDate(value);

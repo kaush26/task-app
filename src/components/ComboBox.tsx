@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-type ItemType = {
-  label: string;
+export type ItemType = {
+  label: React.ReactNode;
   value: string;
 };
 
-type ComboboxPropTypes = {
+export type ComboboxPropTypes = {
   className?: string;
   open?: boolean;
   placeholder?: React.ReactNode;

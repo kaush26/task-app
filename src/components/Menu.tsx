@@ -1,15 +1,22 @@
-import { LuChevronsRight, LuContact2, LuListChecks, LuLogOut, LuMenu, LuPlus, LuUsers2, LuX } from "react-icons/lu";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { LuChevronsRight, LuListChecks, LuLogOut, LuMenu } from "react-icons/lu";
 import Paper from "./ui/paper";
-import Search from "./Search";
-import { cn } from "../lib/utils";
 import { Separator } from "./ui/separator";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
 import ListItem from "./ListItem";
 import ColorBox from "./ColorBox";
 import ListGroup from "./ListGroup";
+import { Button } from "./ui/button";
+import React from "react";
+import ListsContext, { ListContextType } from "@/context/list";
+import TasksContext, { TaskContextType } from "@/context/task";
+import { dateCompare } from "@/lib/utils";
 
 export default function Menu() {
+  const { lists } = React.useContext<ListContextType>(ListsContext);
+  const { tasks } = React.useContext<TaskContextType>(TasksContext);
+  const [location, navigate] = [useLocation(), useNavigate()];
+  const id = location.pathname;
+
   return (
     <Paper className="flex flex-col grow-0 min-w-[20%] h-[calc(100dvh-46px)] p-0 shrink-0 ">
       <header className="flex flex-col p-[26px] gap-4">
@@ -17,70 +24,56 @@ export default function Menu() {
           <div className="text-[20px] font-bold">Menu</div>
           <LuMenu className="cursor-pointer" strokeWidth={3} />
         </header>
-        <Search />
       </header>
 
       <div className="flex flex-col grow overflow-auto">
-        <div className="flex flex-col gap-7 p-[26px]">
-          <ListGroup label="TASKS">
-            <ListItem Icon={<LuChevronsRight />} label="Upcoming" count={3} showCount />
-            <ListItem Icon={<LuListChecks />} label="Today" count={3} showCount />
-            <ListItem Icon={<LuUsers2 />} label="Assigned" count={32} showCount />
+        <div className="flex flex-col gap-3 p-[26px]">
+          <ListGroup labelClassName="ml-2" label="TASKS">
+            <ListItem
+              Icon={<LuChevronsRight />}
+              label="Upcoming"
+              count={tasks.filter((task) => dateCompare(task.dueDate, new Date(), (a, b) => a > b)).length}
+              showCount
+              active={id === "/task/upcoming"}
+              onClick={() => navigate("/task/upcoming")}
+            />
+            <ListItem
+              Icon={<LuListChecks />}
+              label="Today"
+              count={tasks.filter((task) => dateCompare(task.dueDate, new Date(), (a, b) => a === b)).length}
+              showCount
+              active={id === "/task/today"}
+              onClick={() => navigate("task/today")}
+            />
           </ListGroup>
           <Separator />
 
-          <ListGroup label="CONTACTS">
-            <ListItem Icon={<LuContact2 />} label="Peoples" count={5} showCount />
-          </ListGroup>
-          <Separator />
-
-          <ListGroup label="LISTS">
-            <ListItem Icon={<ColorBox className="bg-[red] opacity-[0.6]" />} label="Personal" count={3} showCount />
-            <ListItem Icon={<ColorBox className="bg-[#2679ff] opacity-[0.6]" />} label="Work" count={3} showCount />
-            <ListItem Icon={<ColorBox className="bg-[#d9ff00] opacity-[0.6]" />} label="Milestone" count={32} showCount />
-            <ListItem Icon={<LuPlus />} label="Add New List" showCount={false} onClick={() => console.log("CLICKED")} />
-          </ListGroup>
-          <Separator />
-
-          <ListGroup label="TAGS">
-            <div className="flex gap-2 flex-wrap">
-              <TagPills className="bg-[#fcbfff7f]">Imp</TagPills>
-              <Badge />
-              <Badge />
-              <Badge />
-              <Button variant={"ghost"}>
-                <LuPlus className="mr-2" />
-                Add Tag
-              </Button>
-            </div>
+          <ListGroup labelClassName="ml-2" label={"LISTS"}>
+            {lists.map((list) => (
+              <ListItem
+                key={list._id}
+                Icon={<ColorBox color={list.ragColor} />}
+                label={list.label}
+                count={list.tasks.length}
+                active={id === `/lists/${list._id}`}
+                showCount
+                onClick={() => navigate(`lists/${list._id}`)}
+              />
+            ))}
+            {/* <ListItem Icon={<LuPlus />} label="Add New List" showCount={false} onClick={() => console.log("CLICKED")} /> */}
+            <Button className="w-full my-4">
+              <Link to="/lists">Show all Lists</Link>
+            </Button>
           </ListGroup>
         </div>
       </div>
 
-      <div className="flex shrink-0 h-[60px] p-[26px]">
-        <ListItem Icon={<LuLogOut />} label={<div className="font-semibold">Sign Out</div>} />
-      </div>
+      <Button variant={"ghost"} className="flex shrink-0 h-[60px] w-full p-[26px]">
+        <div className="flex items-center gap-4 w-full">
+          <LuLogOut />
+          <div className="font-semibold">Sign Out</div>
+        </div>
+      </Button>
     </Paper>
-  );
-}
-
-function TagPills({
-  className = "",
-  bg = "#3d4353",
-  label,
-  onClose,
-  children,
-}: {
-  className?: string;
-  bg?: string;
-  label?: React.ReactNode;
-  onClose?: () => void;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className={cn(`flex items-center justify-center gap-3 bg-[${bg}] rounded-lg p-3 font-semibold`, className)}>
-      {children || label}
-      <LuX onClick={onClose} className="cursor-pointer" />
-    </div>
   );
 }
